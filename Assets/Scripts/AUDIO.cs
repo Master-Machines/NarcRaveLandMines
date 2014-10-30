@@ -9,19 +9,21 @@ public class AUDIO : MonoBehaviour {
 	public AudioClip[] daClips;
 	// Use this for initialization
 	IEnumerator Start () {
-		audio.clip = daClips[Random.Range(0, daClips.Length)];
-		audio.Play ();
 		yield return new WaitForSeconds(.5f);
+		audio.Play();
 		lights = GameObject.FindGameObjectsWithTag("light");
 		started = true;
+		yield return new WaitForSeconds(3f);
+		audio.clip = daClips[Random.Range(0, daClips.Length)];
+		audio.Play ();
 	}
 	
 	// Update is called once per frame
 	void Update () {
 		if(started) {
 			DoMusicShit();
-			extraIntensity *= 0.75f;
-			extraIntensity -= .01f;
+			extraIntensity *= 0.8f;
+			extraIntensity -= .005f;
 			if(extraIntensity < 0) {
 				extraIntensity = 0;
 			}
@@ -34,11 +36,11 @@ public class AUDIO : MonoBehaviour {
 		audio.GetSpectrumData(daJams, 1, FFTWindow.Rectangular);
 		float daBeat = 0f;
 		for(int i = 0; i < 256; i++) {
-			daBeat += Mathf.Pow(daJams[i], 4f);
+			daBeat += Mathf.Pow(daJams[i], 3f);
 		}
 		extraIntensity += daBeat;
 		for(int i = 0; i < lights.Length; i++) {
-			lights[i].light.intensity = .20f + extraIntensity * 8f;
+			lights[i].light.range = 25f + extraIntensity * 120f;
 			//mats[i].SetFloat("_OutlineWidth", .1f * daBeat);
 		}
 	}

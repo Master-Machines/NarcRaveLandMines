@@ -122,7 +122,7 @@ public class Combat : MonoBehaviour {
 	}
 
 	void endCombat(){
-		currentButton = "None";
+	/*
 		if(score > otherPlayerCombat.score) {
 			movement.ExitCombat(true);
 		} else {
@@ -133,7 +133,8 @@ public class Combat : MonoBehaviour {
 		//get score from other object, compare to this one
 		//display winner or loser
 		//tell parent object if its a winner or loser
-		Destroy (this);
+		Destroy (this.gameObject);
+		*/
 	}
 	// Update is called once per frame
 	void Update () {

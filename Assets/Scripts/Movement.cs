@@ -13,22 +13,28 @@ public class Movement : MonoBehaviour {
 	public float speed = 0f;
 	
 	public int character = 0;
-	private float acceleration = 2f;
-	private float deacceleration = 0.8f;
-	private float deaccelerationRate = 13f;
-	private float maxDeacceleration = 20f;
+	private float acceleration = 3.5f;
+	private float deacceleration = 2.7f;
+	private float deaccelerationRate = 30f;
+	private float maxDeacceleration = 30f;
 	private float baseDeacceleration = 0f;
 
 	private float dangerZonePercent = 0.3f;
-	private float warningPercent = 0.2f;
-	private float maxSpeed = 120f;
+	private float warningPercent = 0.05f;
+	private float maxSpeed = 150f;
+	private float maxDangerZoneEnergyDrain = .4f;
+	private float minDangerZoneEnergyDrain = .1f;
 	private float dangerZone;
+	
+	private float extraEnergyGainAfterBattle = 0f;
+	private float sleepPeriod = 1.25f;
+	private float tieSpeedBonus = 0f;
 
 	private float xStartingScreenPosition;
 	private float yStartingScreenPosition;
-	private bool isInit = false;
+	public bool isInit = false;
 	private float iconSmallSize = 0f;
-	private float iconLargeSize = 0.08f;
+	private float iconLargeSize = 0.2f;
 	private float startingX = 0f;
 	private float startingY = 0f;
 	private float startingIconLeftX;
@@ -44,7 +50,7 @@ public class Movement : MonoBehaviour {
 
 	public GUISkin gStyle;
 	private Texture2D clearTex;
-	private int currentplace = 0;
+	public int currentplace = 0;
 	/* ENERGY BAR */
 
 	private float currentEnergy = 100f;
@@ -86,7 +92,9 @@ public class Movement : MonoBehaviour {
 	public bool isSleeping = false;
 	
 	private Vector3 standardCamPosition;
-	private Vector3 standardCamOrientation;
+	private Vector3 standardCamRotation;
+	
+	public GameObject combatCamObj;
 	
 	private float maxFOV = 75f;
 	private float lowestFOV = 40f;
@@ -110,19 +118,20 @@ public class Movement : MonoBehaviour {
 	public Texture2D[] triggers;
 	public GameObject particleExplosion;
 	public GameObject demZs;
-	
+	public float zCombat;
 	// Use this for initialization
 	IEnumerator Start () {
 		yield return new WaitForSeconds(0.1f);
-		Debug.Log("WAIT>>> WHAT>>> " + player);
+		ChangeVariablesByClass();
+		standardCamPosition = cameraGameObject.transform.localPosition;
+		standardCamRotation = cameraGameObject.transform.localRotation.eulerAngles;
 		GlobalVars.playerCharacters[player- 1] = player - 1;
 		//mat.SetColor("_OutlineColor", GlobalVars.IntToColor(GlobalVars.playerCharacters[player]));
 		particlesObj.particleSystem.startColor = GlobalVars.IntToColor(GlobalVars.playerCharacters[player - 1]);
 		iluminationObj.light.color = GlobalVars.IntToColor(GlobalVars.playerCharacters[player - 1]);
 		iconSmallSize = Screen.width * .5f * iconSmallSize;
-		iconLargeSize = 200f;
+		iconLargeSize = Screen.width * .5f * iconLargeSize;
 		hypeBarLength = Screen.width * .5f * hypeBarLength;
-		hypeBarLength = 204f;
 		players = GameObject.FindGameObjectsWithTag("Player");
 		SetTextures ();
 		SetHypeBarLengths ();
@@ -151,14 +160,14 @@ public class Movement : MonoBehaviour {
 		startingIconRightY = Screen.height * .5f * .2f;
 		dangerZone = maxSpeed * dangerZonePercent;
 		activeButton = magRequired;
-		isInit = true;
 	}
 	
 	// Update is called once per frame
 	void Update () {
 		if(!GlobalVars.gameOver) {
 			if(isInit) {
-				if(!inCombat) {
+				if(!inCombat && !isSleeping) {
+					
 					baseDeacceleration += deaccelerationRate * Time.deltaTime;
 					if(baseDeacceleration > maxDeacceleration) {
 						baseDeacceleration = maxDeacceleration;
@@ -178,9 +187,20 @@ public class Movement : MonoBehaviour {
 					playerHypePosition = (speed / maxSpeed) * hypeBarLength;
 					ChangeEnergy(Time.deltaTime);
 					
-				}
-				CheckPlace(Time.deltaTime);	
+				} 
 				transform.Translate (new Vector3 ((speed + 15f) * Time.deltaTime, 0f, 0f));
+				CheckPlace(Time.deltaTime);
+				
+			}
+			
+			if(inCombat) {
+				if(transform.position.z < zCombat) {
+					transform.Translate(new Vector3(0f, 0f, Time.deltaTime * 6f));
+				}
+			} else {
+				if(transform.position.z > 0) {
+					transform.Translate(new Vector3(0f, 0f, Time.deltaTime * -2f));
+				}
 			}
 			CheckForVictory();
 			cameraGameObject.camera.fieldOfView = (1 - (speed/maxSpeed)) * (maxFOV - lowestFOV) + lowestFOV;
@@ -190,13 +210,14 @@ public class Movement : MonoBehaviour {
 			StartCoroutine(Win());
 		}
 		
-		
-		if(isSleeping) {
-		
-		}else if(inCombat) {
-			spawnedPlayer.animation.CrossFade("attack");
-		} else {
-			spawnedPlayer.animation.CrossFade("idle");
+		if(spawnedPlayer != null) {
+			if(isSleeping) {
+				
+			}else if(inCombat) {
+				spawnedPlayer.animation.CrossFade("attack");
+			} else {
+				spawnedPlayer.animation.CrossFade("idle");
+			}
 		}
 		
 		if(falling){
@@ -280,9 +301,9 @@ public class Movement : MonoBehaviour {
 			currentEnergy += ((1f - (playerHypePosition / hypeBarGoodLength)) + .2f) * deltaTime;
 		} else if (playerHypePosition < hypeBarGoodLength + hypeBarWarningLength) {
 			// Lose 0-10%
-			currentEnergy -= (((playerHypePosition - hypeBarGoodLength) / hypeBarWarningLength) * .1f) * deltaTime;
+			//currentEnergy -= (((playerHypePosition - hypeBarGoodLength) / hypeBarWarningLength) * .1f) * deltaTime;
 		} else {
-			currentEnergy -= (((playerHypePosition - hypeBarGoodLength - hypeBarWarningLength) / hypeBarDangerLength) * .9f + .1f) * deltaTime;
+			currentEnergy -= (((playerHypePosition - hypeBarGoodLength - hypeBarWarningLength) / hypeBarDangerLength) * maxDangerZoneEnergyDrain + minDangerZoneEnergyDrain) * deltaTime;
 		}
 		
 		if(currentEnergy > maxEnergy) {
@@ -294,27 +315,29 @@ public class Movement : MonoBehaviour {
 	}
 	
 	IEnumerator FallAsleep() {
-		isInit = false;
 		isSleeping = true;
-		currentEnergy = maxEnergy / 3f;
+		currentEnergy = 0;
 		speed = 0f;
 		spawnedPlayer.animation.Play("die");
-		isGod = true;
-		currentZPosition = this.transform.position.z;
+		currentZPosition = this.transform.position.y;
 		iluminationObj.light.range = 5;
 		falling = true;
 		Instantiate(demZs, transform.position, Quaternion.identity);
 		yield return new WaitForSeconds(1f);
 		HideShit(false);
 		Instantiate(particleExplosion, transform.position, Quaternion.identity);
-		yield return new WaitForSeconds(1f);
+		yield return new WaitForSeconds(sleepPeriod);
 		HideShit(true);
 		iluminationObj.light.range = 70;
-		isInit = true;
 		isSleeping = false;
 		falling = false;
+		StartCoroutine(MakeInv(3.5f));
 		this.transform.position = new Vector3(transform.position.x, currentZPosition, transform.position.z);
-		yield return new WaitForSeconds(currentplace);
+	}
+	
+	IEnumerator MakeInv(float duration) {
+		isGod = true;
+		yield return new WaitForSeconds(duration);
 		isGod = false;
 	}
 	
@@ -350,12 +373,20 @@ public class Movement : MonoBehaviour {
 	void EnterCombat(GameObject other) {
 		Movement m = other.gameObject.GetComponent<Movement>();
 		if(!m.inCombat && !inCombat && !isSleeping && !m.isSleeping && !isGod && !m.isGod) {
+			if(other.transform.position.x < transform.position.x) {
+				MoveCameraToCombat(cameraGameObject, -2.5f);
+				MoveCameraToCombat(m.cameraGameObject, 2.5f);
+				iTween.RotateTo(spawnedPlayer, new Vector3(0f, 90f, 0f), .5f);
+			} else {
+				iTween.RotateTo(m.spawnedPlayer, new Vector3(0f, 90f, 0f), .5f);
+				MoveCameraToCombat(cameraGameObject, 2.5f);
+				MoveCameraToCombat(m.cameraGameObject, -2.5f);
+			}
+			
 			inCombat = true;
 			m.inCombat = true;
 			float slowestSpeed = speed;
-			if(m.speed > speed) {
-				slowestSpeed = m.speed;
-			}
+			slowestSpeed = (m.speed + speed) / 2.5f;
 			speed = slowestSpeed;
 			m.speed = slowestSpeed;
 			
@@ -366,19 +397,17 @@ public class Movement : MonoBehaviour {
 			}
 			
 			GameObject cObj1 = (GameObject)Instantiate(combatObj, new Vector3(0f,0f,0f), Quaternion.identity);
-			Combat c1 = cObj1.GetComponent<Combat>();
+			Combat2 c1 = cObj1.GetComponent<Combat2>();
 			c1.playerNumber = player;
-			c1.otherPlayerNumber = m.player;
 			c1.movement = this;
-			
+			c1.canEndIt = true;
 			GameObject cObj2 = (GameObject)Instantiate(combatObj, new Vector3(0f,0f,0f), Quaternion.identity);
-			Combat c2 = cObj2.GetComponent<Combat>();
+			Combat2 c2 = cObj2.GetComponent<Combat2>();
 			c2.playerNumber = m.player;
-			c2.otherPlayerNumber = player;
 			c2.movement = m;
 
-			c1.otherPlayerCombat = c2;
-			c2.otherPlayerCombat = c1;
+			c1.otherCombat = c2;
+			c2.otherCombat = c1;
 			float matchTime;
 			int playersPlaces = currentplace + m.currentplace;
 			if(playersPlaces < 3) {
@@ -389,8 +418,8 @@ public class Movement : MonoBehaviour {
 				matchTime = 3.25f;
 			}
 			
-			c1.StartMatch(matchTime);
-			c2.StartMatch(matchTime);
+			c1.StartMatch();
+			c2.StartMatch();
 		
 		} else {
 			//speed = m.speed;
@@ -398,20 +427,114 @@ public class Movement : MonoBehaviour {
 		}	
 	}
 	
-	public void ExitCombat(bool victory) {
-		if(!victory) {
+	void MoveCameraToCombat(GameObject camObj, float deltaX) {
+		float animateTime = .5f;
+		Hashtable movementHash = new Hashtable();
+		movementHash.Add("position", new Vector3(combatCamObj.transform.localPosition.x + deltaX, combatCamObj.transform.localPosition.y, combatCamObj.transform.localPosition.z));
+		movementHash.Add("islocal", true);
+		movementHash.Add("time", animateTime);
+		iTween.MoveTo(camObj, movementHash);
+		
+		Hashtable rotateHash = new Hashtable();
+		rotateHash.Add("time", animateTime);
+		rotateHash.Add("islocal", true);
+		rotateHash.Add ("rotation", combatCamObj.transform.rotation.eulerAngles);
+		iTween.RotateTo(camObj, rotateHash);
+		
+	}
+	
+	void MoveCameraToIdle(GameObject camObj, float time) {
+		Hashtable movementHash = new Hashtable();
+		movementHash.Add("position", standardCamPosition);
+		movementHash.Add("islocal", true);
+		movementHash.Add("time", time);
+		iTween.MoveTo(camObj, movementHash);
+		
+		Hashtable rotateHash = new Hashtable();
+		rotateHash.Add("time", time);
+		rotateHash.Add("islocal", true);
+		rotateHash.Add ("rotation", standardCamRotation);
+		iTween.RotateTo(camObj, rotateHash);
+	}
+	
+	public void ExitCombat(int victory) {
+		if(victory == 0) {
 			StartCoroutine(FallAsleep());
+			MoveCameraToIdle(cameraGameObject, 4f);
+		} else if(victory == 1){
+			MoveCameraToIdle(cameraGameObject, 2f);
+			speed *= (1f + tieSpeedBonus);
+		} else if(victory == 2) {
+			MoveCameraToIdle(cameraGameObject, 3f);
+			speed *= (.65f + tieSpeedBonus);
 		}
+		if(currentEnergy < maxEnergy * (.5f + extraEnergyGainAfterBattle)) {
+			currentEnergy = maxEnergy * (.5f + extraEnergyGainAfterBattle);
+		}
+		StartCoroutine(MakeInv(3.5f));
+		iTween.RotateTo(spawnedPlayer, new Vector3(0f, 270f, 0f), .25f);
 		inCombat = false;
+	}
+	
+	string GetPlaceString() {
+		switch (currentplace) {
+			case 1 :
+				return "1st";
+				break;
+			case 2 :
+				return "2nd";
+				break;
+			case 3 :
+				return "3rd";
+				break;
+			case 4 :
+				return "4th";
+				break;
+			default :
+				return "derp";
+				break;
+		}
+	}
+	
+	void ChangeVariablesByClass() {
+	/*
+		private float acceleration = 3.5f;
+		private float deacceleration = 2.7f;
+		private float deaccelerationRate = 30f;
+		private float maxDeacceleration = 30f;
+		private float baseDeacceleration = 0f;
+	
+		private float dangerZonePercent = 0.3f;
+		private float warningPercent = 0.05f;
+		private float maxSpeed = 150f;
+		maxDangerZoneEnergyDrain = .4f
+	*/
+		if(GlobalVars.playerClasses[player - 1] == 0) {
+			maxDangerZoneEnergyDrain *= .75f; // Max energy drain is 80% of the default
+			minDangerZoneEnergyDrain *= .5f; // Min energy drain is 50% of the default
+			acceleration *= .6f; // Acceleration is 60% of the default.
+		} else if(GlobalVars.playerClasses[player - 1] == 1) {
+			// Sleep for shorter period, note that that the sleepPeriod variable is only a portion of the total sleeping time
+			// So cutting it in half will not actually reduce sleep ammount by half
+			sleepPeriod *= .5f;
+			extraEnergyGainAfterBattle = .2f;
+			maxSpeed *= .82f;
+		} else if(GlobalVars.playerClasses[player - 1] == 2) {
+			acceleration *= 1.4f;
+			maxSpeed *= .9f;
+		} else if(GlobalVars.playerClasses[player - 1] == 3) {
+			sleepPeriod *= 1.4f;
+			tieSpeedBonus = .13f;
+		}
 	}
 
 	void OnGUI() {
 		GUI.skin = gStyle;
 
 		/* SPEED BAR */
-		float barHeight = 26f;
-		float barXDistance = 670f;
-		float barYDistance = 380f;
+		float barHeight = Screen.height * .03f;
+		float barXDistance = Screen.width * .357f;
+		float barYDistance = Screen.height * .42f;
 
 		if (playerHypePosition < hypeBarGoodLength) {
 			gStyle.box.normal.background = greenTexActive;
@@ -422,7 +545,7 @@ public class Movement : MonoBehaviour {
 		GUI.Box (new Rect (startingX + barXDistance, startingY + barYDistance, hypeBarGoodLength, barHeight),"");
 
 		if (playerHypePosition > hypeBarGoodLength && playerHypePosition < hypeBarGoodLength + hypeBarWarningLength) {
-						gStyle.box.normal.background = yellowTexActive;
+			gStyle.box.normal.background = yellowTexActive;
 		} else {
 			gStyle.box.normal.background = yellowTex;		
 		}
@@ -442,28 +565,40 @@ public class Movement : MonoBehaviour {
 		if(!inCombat) {
 			/* ENERGY BAR */
 			float barWidth = (currentEnergy / maxEnergy) * hypeBarLength;
-			barYDistance = 413f;
+			barYDistance = Screen.height * .45f;
 			gStyle.box.normal.background = energyTex;
 			GUI.Box(new Rect(startingX + barXDistance, startingY + barYDistance, barWidth, barHeight), "");
 			GUI.Box(new Rect(startingX + barXDistance + barWidth, startingY + barYDistance, 2, barHeight), "");
 			
 		}
-
+		/* GUI Overlay and place indicator */
 		if(player == 1) {
 			gStyle.box.normal.background = redGUI;
 			GUI.Box(new Rect(startingX, startingY, Screen.width * .5f, Screen.height * .49f),"" );
+			gStyle.box.normal.background = clearTex;
+			gStyle.box.normal.textColor = GlobalVars.redColor;
+			GUI.Box (new Rect(startingX + Screen.width * .5f - 125f, startingY + 15f, 125f, 100f), GetPlaceString());
 		} else if(player == 2) {
 			gStyle.box.normal.background = blueGUI;
 			GUI.Box(new Rect(startingX, startingY, Screen.width * .5f, Screen.height * .49f),"" );
+			gStyle.box.normal.background = clearTex;
+			gStyle.box.normal.textColor = GlobalVars.blueColor;
+			GUI.Box (new Rect(startingX + Screen.width * .5f - 125f, startingY + 15f, 125f, 100f), GetPlaceString());
 		} else if(player == 3) {
 			gStyle.box.normal.background = greenGUI;
 			GUI.Box(new Rect(startingX, startingY, Screen.width * .5f, Screen.height * .49f),"" );
+			gStyle.box.normal.background = clearTex;
+			gStyle.box.normal.textColor = GlobalVars.greenColor;
+			GUI.Box (new Rect(startingX + Screen.width * .5f - 125f, startingY + 15f, 125f, 100f), GetPlaceString());
 		} else if(player == 4) {
 			gStyle.box.normal.background = yellowGUI;
 			GUI.Box(new Rect(startingX, startingY, Screen.width * .5f, Screen.height * .49f),"" );
+			gStyle.box.normal.background = clearTex;
+			gStyle.box.normal.textColor = GlobalVars.yellowColor;
+			GUI.Box (new Rect(startingX + Screen.width * .5f - 125f, startingY + 15f, 125f, 100f), GetPlaceString());
 		}
 		if (isInit && !inCombat) {
-			
+			/* LEFT and RIGHT Triggers*/
 			gStyle.box.normal.background = clearTex;
 			float leftIconWidth = iconLargeSize;
 			float rightIconWidth = iconLargeSize;
@@ -473,10 +608,14 @@ public class Movement : MonoBehaviour {
 				leftIconWidth = iconLargeSize;
 				rightIconWidth = iconLargeSize;
 				index += 1;
-				GUI.Box(new Rect(startingX + 785f, startingY + 345f, rightIconWidth, rightIconWidth), triggers[index]);
+				GUI.Box(new Rect(startingX + Screen.width * .41f, startingY + Screen.height * .37f, rightIconWidth, rightIconWidth), triggers[index]);
 			} else {
-				GUI.Box(new Rect(startingX + 575f, startingY + 345f, leftIconWidth, leftIconWidth), triggers[index]);
+				GUI.Box(new Rect(startingX + Screen.width * .298f, startingY + Screen.height * .37f, leftIconWidth, leftIconWidth), triggers[index]);
 			}
 		}
+		
+		/* PLACE INDICATOR */
+		
+		
 	}
 }

@@ -7,6 +7,8 @@ Project("{FA54A649-D7D5-8CBC-E053-0F48F4E61BF3}") = "NarcRaveLandMines", "Assemb
 EndProject
 Project("{FA54A649-D7D5-8CBC-E053-0F48F4E61BF3}") = "NarcRaveLandMines", "Assembly-UnityScript-firstpass.unityproj", "{C18FF550-8169-5985-F008-31D76883AC31}"
 EndProject
+Project("{FA54A649-D7D5-8CBC-E053-0F48F4E61BF3}") = "NarcRaveLandMines", "Assembly-UnityScript-Editor.unityproj", "{3550DB5D-74CF-3A94-10AC-E68625F2EB7F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,11 +27,15 @@ Global
 		{C18FF550-8169-5985-F008-31D76883AC31}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C18FF550-8169-5985-F008-31D76883AC31}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C18FF550-8169-5985-F008-31D76883AC31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3550DB5D-74CF-3A94-10AC-E68625F2EB7F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3550DB5D-74CF-3A94-10AC-E68625F2EB7F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3550DB5D-74CF-3A94-10AC-E68625F2EB7F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3550DB5D-74CF-3A94-10AC-E68625F2EB7F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-							GlobalSection(MonoDevelopProperties) = preSolution
+																			GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = Assembly-CSharp.csproj
 		Policies = $0
 		$0.TextStylePolicy = $1

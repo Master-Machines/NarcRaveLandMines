@@ -4,6 +4,7 @@ using System.Collections;
 public class GlobalVars : MonoBehaviour {
 	public static float goalXPosition = 6100;
 	public static int[] playerCharacters = new int[4];
+	public static int[] playerClasses = new int[4];
 	public static int numberOfPlayers = 0;
 	public static bool[] playersJoined = new bool[4];
 	public static Color blueColor = new Color(0, 0.357f, 0.82f);
